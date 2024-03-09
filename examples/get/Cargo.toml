@@ -1,0 +1,6 @@
+[package]
+name = "sailhouse-get-example"
+
+[dependencies]
+sailhouse = { path = "../../sdk" }
+tokio = { version = "1", features = ["full"] }

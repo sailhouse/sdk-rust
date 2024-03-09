@@ -1,9 +1,9 @@
 use reqwest::Client;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
-use std::time::Duration;
 
-#[derive(Debug)]
+
+#[derive(Debug,Clone)]
 pub struct SailhouseClient {
     client: Client,
     token: String,
@@ -52,12 +52,20 @@ impl SailhouseClient {
         if let Some(offset) = opts.offset {
             req = req.query(&[("offset", offset.to_string())]);
         }
-        if let Some(time_window) = opts.time_window {
-            req = req.query(&[("time_window", time_window.as_secs().to_string())]);
-        }
 
         let res = self.do_req(req).await?;
-        let response_body: GetEventsResponse = res.json().await?;
+        let mut response_body = res.json::<GetEventsResponse>().await?;
+
+        // set topic and subscription for each event
+        let mut events = response_body.events;
+        for event in events.iter_mut() {
+            event.topic = topic.to_string();
+            event.subscription = subscription.to_string();
+            event.client = Some(self.clone());
+        }
+
+        response_body.events = events;
+
         Ok(response_body)
     }
 
@@ -113,8 +121,11 @@ pub struct EventResponse {
 pub struct Event {
     pub id: String,
     pub data: Value,
+    #[serde(skip)]
     topic: String,
+    #[serde(skip)]
     subscription: String,
+
     #[serde(skip)]
     client: Option<SailhouseClient>,
 }
