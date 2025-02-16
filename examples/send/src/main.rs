@@ -14,5 +14,7 @@ fn main() {
     data.insert("message", "Hello world!");
 
     let publish_future = client.publish("example-topic", data);
-    let _ = tokio::runtime::Runtime::new().unwrap().block_on(publish_future);
+    let _ = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(publish_future);
 }

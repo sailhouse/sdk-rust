@@ -2,11 +2,11 @@ use reqwest::Client;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 
-
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct SailhouseClient {
     client: Client,
     token: String,
+    base_url: String,
 }
 
 #[derive(Serialize)]
@@ -25,7 +25,19 @@ impl SailhouseClient {
     }
 
     pub fn with_options(client: Client, token: String) -> Self {
-        SailhouseClient { client, token }
+        SailhouseClient {
+            client,
+            token,
+            base_url: "https://api.sailhouse.dev".to_string(),
+        }
+    }
+
+    pub fn with_base_url(client: Client, token: String, base_url: String) -> Self {
+        SailhouseClient {
+            client,
+            token,
+            base_url,
+        }
     }
 
     async fn do_req(&self, req: reqwest::RequestBuilder) -> reqwest::Result<reqwest::Response> {
@@ -42,8 +54,8 @@ impl SailhouseClient {
         opts: GetOption,
     ) -> Result<GetEventsResponse, reqwest::Error> {
         let mut req = self.client.get(format!(
-            "https://api.sailhouse.dev/topics/{}/subscriptions/{}/events",
-            topic, subscription
+            "{}/topics/{}/subscriptions/{}/events",
+            self.base_url, topic, subscription
         ));
 
         if let Some(limit) = opts.limit {
@@ -78,8 +90,8 @@ impl SailhouseClient {
         let req = self
             .client
             .post(format!(
-                "https://api.sailhouse.dev/topics/{}/subscriptions/{}/events/{}",
-                topic, subscription, id
+                "{}/topics/{}/subscriptions/{}/events/{}",
+                self.base_url, topic, subscription, id
             ))
             .json(&serde_json::json!({}));
 
@@ -93,7 +105,7 @@ impl SailhouseClient {
     pub async fn publish<T: Serialize>(&self, topic: &str, data: T) -> Result<(), reqwest::Error> {
         let req = self
             .client
-            .post(format!("https://api.sailhouse.dev/topics/{}/events", topic))
+            .post(format!("{}/topics/{}/events", self.base_url, topic))
             .json(&PublishBody { data });
 
         let res = self.do_req(req).await?;
@@ -122,12 +134,12 @@ pub struct Event {
     pub id: String,
     pub data: Value,
     #[serde(skip)]
-    topic: String,
+    pub topic: String,
     #[serde(skip)]
-    subscription: String,
+    pub subscription: String,
 
     #[serde(skip)]
-    client: Option<SailhouseClient>,
+    pub client: Option<SailhouseClient>,
 }
 
 impl Event {
