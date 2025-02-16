@@ -1,4 +1,4 @@
-use std::{ env};
+use std::env;
 
 fn main() {
     let token = match env::var("SAILHOUSE_TOKEN") {
@@ -10,7 +10,14 @@ fn main() {
     };
 
     let client = sailhouse::SailhouseClient::new(token);
-    let get_future = client.get_events("example-topic", "example-subscription-sdk-rust", sailhouse::GetOption { limit: Some(10), offset: Some(0) });
+    let get_future = client.get_events(
+        "example-topic",
+        "example-subscription-sdk-rust",
+        sailhouse::GetOption {
+            limit: Some(10),
+            offset: Some(0),
+        },
+    );
     let result = tokio::runtime::Runtime::new().unwrap().block_on(get_future);
 
     match result {
@@ -25,5 +32,4 @@ fn main() {
             eprintln!("Failed to get events: {}", error);
         }
     }
-
 }
