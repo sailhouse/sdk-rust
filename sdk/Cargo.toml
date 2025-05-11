@@ -1,6 +1,6 @@
 [package]
 name = "sailhouse"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Official Sailhouse client for Rust"
 license = "Apache-2.0"
@@ -17,6 +17,10 @@ features = ["derive"]
 
 [dependencies.serde_json]
 version = "1.0.107"
+
+[dependencies.chrono]
+version = "0.4"
+features = ["serde"]
 
 [dev-dependencies]
 mockito = "1.2"

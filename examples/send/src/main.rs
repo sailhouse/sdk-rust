@@ -13,7 +13,7 @@ fn main() {
     let mut data = HashMap::new();
     data.insert("message", "Hello world!");
 
-    let publish_future = client.publish("example-topic", data);
+    let publish_future = client.publish("example-topic", data).send();
     let _ = tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(publish_future);
