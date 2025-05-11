@@ -67,9 +67,13 @@ impl<'a, T: Serialize> PublishBuilder<'a, T> {
     pub async fn send(self) -> Result<PublishResponse, reqwest::Error> {
         let send_at_str = self.send_at.map(|date| date.to_rfc3339());
 
-        let req = self.client
+        let req = self
             .client
-            .post(format!("{}/topics/{}/events", self.client.base_url, self.topic))
+            .client
+            .post(format!(
+                "{}/topics/{}/events",
+                self.client.base_url, self.topic
+            ))
             .json(&PublishBody {
                 data: self.data,
                 metadata: self.metadata,
