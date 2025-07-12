@@ -103,6 +103,7 @@ fn test_event_deserialization() {
             "message": "test message",
             "count": 42
         }),
+        metadata: None,
         topic: "test-topic".to_string(),
         subscription: "test-sub".to_string(),
         client: None,
@@ -142,6 +143,7 @@ async fn test_event_ack() {
     let event = Event {
         id: "event-1".to_string(),
         data: json!({}),
+        metadata: None,
         topic: "test-topic".to_string(),
         subscription: "test-sub".to_string(),
         client: Some(client),

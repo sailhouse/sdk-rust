@@ -309,12 +309,16 @@ pub struct EventResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PublishResponse {
     pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<std::collections::HashMap<String, String>>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Event {
     pub id: String,
     pub data: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<std::collections::HashMap<String, String>>,
     #[serde(skip)]
     pub topic: String,
     #[serde(skip)]
