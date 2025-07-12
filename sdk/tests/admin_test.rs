@@ -1,6 +1,6 @@
 use mockito::Server;
 use sailhouse::{
-    AdminClient, Filter, FilterCondition, ComplexFilter, PushSubscriptionOptions, SailhouseClient,
+    AdminClient, ComplexFilter, Filter, FilterCondition, PushSubscriptionOptions, SailhouseClient,
 };
 use serde_json::json;
 
@@ -48,11 +48,14 @@ async fn test_register_push_subscription_with_boolean_filter() {
         .mock("PUT", "/topics/test-topic/subscriptions/test-sub")
         .match_header("Authorization", "test-token")
         .match_header("x-source", "sailhouse-rust")
-        .match_body(mockito::Matcher::JsonString(json!({
-            "type": "push",
-            "endpoint": "https://example.com/webhook",
-            "filter": true
-        }).to_string()))
+        .match_body(mockito::Matcher::JsonString(
+            json!({
+                "type": "push",
+                "endpoint": "https://example.com/webhook",
+                "filter": true
+            })
+            .to_string(),
+        ))
         .with_status(200)
         .with_body(r#"{"outcome":"created"}"#)
         .create();
@@ -96,25 +99,28 @@ async fn test_register_push_subscription_with_complex_filter() {
         .mock("PUT", "/topics/test-topic/subscriptions/test-sub")
         .match_header("Authorization", "test-token")
         .match_header("x-source", "sailhouse-rust")
-        .match_body(mockito::Matcher::JsonString(json!({
-            "type": "push",
-            "endpoint": "https://example.com/webhook",
-            "filter": {
-                "filters": [
-                    {
-                        "path": "data.type",
-                        "condition": "eq",
-                        "value": "user.created"
-                    },
-                    {
-                        "path": "data.user.premium",
-                        "condition": "eq",
-                        "value": "true"
-                    }
-                ],
-                "operator": "and"
-            }
-        }).to_string()))
+        .match_body(mockito::Matcher::JsonString(
+            json!({
+                "type": "push",
+                "endpoint": "https://example.com/webhook",
+                "filter": {
+                    "filters": [
+                        {
+                            "path": "data.type",
+                            "condition": "eq",
+                            "value": "user.created"
+                        },
+                        {
+                            "path": "data.user.premium",
+                            "condition": "eq",
+                            "value": "true"
+                        }
+                    ],
+                    "operator": "and"
+                }
+            })
+            .to_string(),
+        ))
         .with_status(200)
         .with_body(r#"{"outcome":"updated"}"#)
         .create();
@@ -150,13 +156,16 @@ async fn test_register_push_subscription_with_options() {
         .mock("PUT", "/topics/test-topic/subscriptions/test-sub")
         .match_header("Authorization", "test-token")
         .match_header("x-source", "sailhouse-rust")
-        .match_body(mockito::Matcher::JsonString(json!({
-            "type": "push",
-            "endpoint": "https://example.com/webhook",
-            "filter": false,
-            "rate_limit": "10/minute",
-            "deduplication": "5m"
-        }).to_string()))
+        .match_body(mockito::Matcher::JsonString(
+            json!({
+                "type": "push",
+                "endpoint": "https://example.com/webhook",
+                "filter": false,
+                "rate_limit": "10/minute",
+                "deduplication": "5m"
+            })
+            .to_string(),
+        ))
         .with_status(200)
         .with_body(r#"{"outcome":"created"}"#)
         .create();
@@ -190,11 +199,14 @@ async fn test_register_push_subscription_with_minimal_options() {
         .mock("PUT", "/topics/test-topic/subscriptions/test-sub")
         .match_header("Authorization", "test-token")
         .match_header("x-source", "sailhouse-rust")
-        .match_body(mockito::Matcher::JsonString(json!({
-            "type": "push",
-            "endpoint": "https://example.com/webhook",
-            "deduplication": "1h"
-        }).to_string()))
+        .match_body(mockito::Matcher::JsonString(
+            json!({
+                "type": "push",
+                "endpoint": "https://example.com/webhook",
+                "deduplication": "1h"
+            })
+            .to_string(),
+        ))
         .with_status(200)
         .with_body(r#"{"outcome":"none"}"#)
         .create();

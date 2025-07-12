@@ -4,13 +4,15 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 
 pub mod admin;
-pub use admin::{AdminClient, Filter, FilterCondition, FilterOption, ComplexFilter, PushSubscriptionOptions};
+pub use admin::{
+    AdminClient, ComplexFilter, Filter, FilterCondition, FilterOption, PushSubscriptionOptions,
+};
 
 pub mod push_subscriptions;
 pub use push_subscriptions::{
-    PushSubscriptionVerifier, PushSubscriptionVerificationError, SignatureComponents,
-    PushSubscriptionHeaders, PushSubscriptionPayload, VerificationOptions,
     verify_push_subscription_signature, verify_push_subscription_signature_safe,
+    PushSubscriptionHeaders, PushSubscriptionPayload, PushSubscriptionVerificationError,
+    PushSubscriptionVerifier, SignatureComponents, VerificationOptions,
 };
 
 #[derive(Debug, Clone)]
@@ -276,11 +278,21 @@ impl SailhouseClient {
     }
 
     /// Pull a single event from a subscription
-    pub async fn pull(&self, topic: &str, subscription: &str) -> Result<Option<Event>, reqwest::Error> {
-        let response = self.get_events(topic, subscription, GetOption {
-            limit: Some(1),
-            offset: Some(0),
-        }).await?;
+    pub async fn pull(
+        &self,
+        topic: &str,
+        subscription: &str,
+    ) -> Result<Option<Event>, reqwest::Error> {
+        let response = self
+            .get_events(
+                topic,
+                subscription,
+                GetOption {
+                    limit: Some(1),
+                    offset: Some(0),
+                },
+            )
+            .await?;
 
         Ok(response.events.into_iter().next())
     }
@@ -293,7 +305,8 @@ impl SailhouseClient {
         secret: &str,
         options: Option<crate::push_subscriptions::VerificationOptions>,
     ) -> Result<bool, crate::push_subscriptions::PushSubscriptionVerificationError> {
-        let verifier = crate::push_subscriptions::PushSubscriptionVerifier::new(secret.to_string())?;
+        let verifier =
+            crate::push_subscriptions::PushSubscriptionVerifier::new(secret.to_string())?;
         verifier.verify_signature(signature, body, options)
     }
 
@@ -301,7 +314,10 @@ impl SailhouseClient {
     pub fn create_push_subscription_verifier(
         &self,
         secret: &str,
-    ) -> Result<crate::push_subscriptions::PushSubscriptionVerifier, crate::push_subscriptions::PushSubscriptionVerificationError> {
+    ) -> Result<
+        crate::push_subscriptions::PushSubscriptionVerifier,
+        crate::push_subscriptions::PushSubscriptionVerificationError,
+    > {
         crate::push_subscriptions::PushSubscriptionVerifier::new(secret.to_string())
     }
 
@@ -402,7 +418,18 @@ impl Default for SubscriberOptions {
 }
 
 /// Handler function type for processing events
-pub type SubscriptionHandler = Box<dyn Fn(Event) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send>> + Send + Sync>;
+pub type SubscriptionHandler = Box<
+    dyn Fn(
+            Event,
+        ) -> std::pin::Pin<
+            Box<
+                dyn std::future::Future<
+                        Output = Result<(), Box<dyn std::error::Error + Send + Sync>>,
+                    > + Send,
+            >,
+        > + Send
+        + Sync,
+>;
 
 /// Information about a subscription
 pub struct Subscriber {
@@ -433,11 +460,11 @@ impl SailhouseSubscriber {
     pub fn subscribe<F, Fut>(&mut self, topic: &str, subscription: &str, handler: F)
     where
         F: Fn(Event) -> Fut + Send + Sync + 'static,
-        Fut: std::future::Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send + 'static,
+        Fut: std::future::Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>>
+            + Send
+            + 'static,
     {
-        let boxed_handler: SubscriptionHandler = Box::new(move |event| {
-            Box::pin(handler(event))
-        });
+        let boxed_handler: SubscriptionHandler = Box::new(move |event| Box::pin(handler(event)));
 
         self.subscribers.push(Subscriber {
             topic: topic.to_string(),
@@ -452,7 +479,8 @@ impl SailhouseSubscriber {
             return Err("Subscriber is already running".into());
         }
 
-        self.running.store(true, std::sync::atomic::Ordering::Relaxed);
+        self.running
+            .store(true, std::sync::atomic::Ordering::Relaxed);
 
         let mut tasks = Vec::new();
 
@@ -484,7 +512,8 @@ impl SailhouseSubscriber {
 
     /// Stop the subscriber
     pub fn stop(&self) {
-        self.running.store(false, std::sync::atomic::Ordering::Relaxed);
+        self.running
+            .store(false, std::sync::atomic::Ordering::Relaxed);
     }
 
     async fn run_subscriber_loop(
@@ -507,7 +536,7 @@ impl SailhouseSubscriber {
                     tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
                 }
                 Err(e) => {
-                    eprintln!("Error pulling from {}/{}: {}", topic, subscription, e);
+                    eprintln!("Error pulling from {topic}/{subscription}: {e}");
                     tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
                 }
             }

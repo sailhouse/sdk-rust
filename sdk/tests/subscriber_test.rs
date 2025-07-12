@@ -45,7 +45,7 @@ async fn test_pull_event() {
     assert_eq!(event.topic, "test-topic");
     assert_eq!(event.subscription, "test-sub");
     assert!(event.metadata.is_some());
-    
+
     let metadata = event.metadata.unwrap();
     assert_eq!(metadata.get("source").unwrap(), "test");
     mock.assert();
@@ -81,24 +81,24 @@ async fn test_pull_no_events() {
 
 #[test]
 fn test_subscriber_creation() {
-    let mut server = mockito::Server::new();
+    let server = mockito::Server::new();
     let client = create_test_client(&server);
 
-    let subscriber = client.subscriber(None);
+    let _subscriber = client.subscriber(None);
     // Test that subscriber was created successfully
-    // Note: We can't easily test the full subscriber functionality without 
+    // Note: We can't easily test the full subscriber functionality without
     // significant refactoring due to the async nature and complex ownership
 }
 
 #[test]
 fn test_subscriber_creation_with_options() {
-    let mut server = mockito::Server::new();
+    let server = mockito::Server::new();
     let client = create_test_client(&server);
 
     let options = SubscriberOptions {
         per_subscription_processors: 5,
     };
 
-    let subscriber = client.subscriber(Some(options));
+    let _subscriber = client.subscriber(Some(options));
     // Test that subscriber was created with custom options
 }

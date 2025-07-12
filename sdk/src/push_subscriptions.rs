@@ -59,7 +59,9 @@ pub struct VerificationOptions {
 
 impl Default for VerificationOptions {
     fn default() -> Self {
-        Self { tolerance: Some(300) }
+        Self {
+            tolerance: Some(300),
+        }
     }
 }
 
@@ -122,7 +124,7 @@ impl PushSubscriptionVerifier {
         for element in elements {
             let trimmed = element.trim();
             let parts: Vec<&str> = trimmed.split('=').collect();
-            
+
             if parts.len() != 2 {
                 continue;
             }
@@ -156,7 +158,7 @@ impl PushSubscriptionVerifier {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        
+
         current_time >= timestamp && (current_time - timestamp) <= tolerance
     }
 
@@ -166,11 +168,11 @@ impl PushSubscriptionVerifier {
         timestamp: u64,
         body: &str,
     ) -> Result<String, PushSubscriptionVerificationError> {
-        let payload = format!("{}.{}", timestamp, body);
-        
+        let payload = format!("{timestamp}.{body}");
+
         let mut mac = HmacSha256::new_from_slice(self.secret.as_bytes())
             .map_err(|e| PushSubscriptionVerificationError::VerificationError(e.to_string()))?;
-        
+
         mac.update(payload.as_bytes());
         let result = mac.finalize();
         Ok(hex::encode(result.into_bytes()))
@@ -186,7 +188,7 @@ impl PushSubscriptionVerifier {
             Ok(bytes) => bytes,
             Err(_) => return false,
         };
-        
+
         let actual_bytes = match hex::decode(actual) {
             Ok(bytes) => bytes,
             Err(_) => return false,
@@ -229,10 +231,10 @@ mod tests {
     #[test]
     fn test_signature_header_parsing() {
         let verifier = PushSubscriptionVerifier::new("test-secret".to_string()).unwrap();
-        
+
         let header = "t=1625097600,v1=abcdef123456";
         let components = verifier.parse_signature_header(header).unwrap();
-        
+
         assert_eq!(components.timestamp, 1625097600);
         assert_eq!(components.signature, "abcdef123456");
     }
@@ -240,25 +242,28 @@ mod tests {
     #[test]
     fn test_invalid_signature_header() {
         let verifier = PushSubscriptionVerifier::new("test-secret".to_string()).unwrap();
-        
+
         let header = "invalid-header";
         let result = verifier.parse_signature_header(header);
-        
-        assert!(matches!(result, Err(PushSubscriptionVerificationError::InvalidSignatureFormat)));
+
+        assert!(matches!(
+            result,
+            Err(PushSubscriptionVerificationError::InvalidSignatureFormat)
+        ));
     }
 
     #[test]
     fn test_timestamp_validation() {
         let verifier = PushSubscriptionVerifier::new("test-secret".to_string()).unwrap();
-        
+
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        
+
         // Valid timestamp (within tolerance)
         assert!(verifier.is_timestamp_valid(current_time - 100, 300));
-        
+
         // Invalid timestamp (too old)
         assert!(!verifier.is_timestamp_valid(current_time - 400, 300));
     }
@@ -266,9 +271,11 @@ mod tests {
     #[test]
     fn test_signature_calculation() {
         let verifier = PushSubscriptionVerifier::new("test-secret".to_string()).unwrap();
-        
-        let signature = verifier.calculate_signature(1625097600, "test-body").unwrap();
-        
+
+        let signature = verifier
+            .calculate_signature(1625097600, "test-body")
+            .unwrap();
+
         // Verify that we get a consistent hex-encoded signature
         assert_eq!(signature.len(), 64); // SHA256 hex string length
         assert!(signature.chars().all(|c| c.is_ascii_hexdigit()));
@@ -277,15 +284,15 @@ mod tests {
     #[test]
     fn test_safe_verification() {
         // Valid signature should return true
-        let result = verify_push_subscription_signature_safe(
+        let _result = verify_push_subscription_signature_safe(
             "valid-secret",
             "t=1625097600,v1=validhex",
             "test-body",
             None,
         );
-        
+
         // This will likely fail because we're not using a real signature,
         // but it shouldn't panic
-        assert!(!result || result); // Just ensure it returns a boolean
+        // Just ensure the function doesn't panic
     }
 }
