@@ -6,6 +6,13 @@ use serde_json::Value;
 pub mod admin;
 pub use admin::{AdminClient, Filter, FilterCondition, FilterOption, ComplexFilter, PushSubscriptionOptions};
 
+pub mod push_subscriptions;
+pub use push_subscriptions::{
+    PushSubscriptionVerifier, PushSubscriptionVerificationError, SignatureComponents,
+    PushSubscriptionHeaders, PushSubscriptionPayload, VerificationOptions,
+    verify_push_subscription_signature, verify_push_subscription_signature_safe,
+};
+
 #[derive(Debug, Clone)]
 pub struct SailhouseClient {
     pub(crate) client: Client,
@@ -276,6 +283,26 @@ impl SailhouseClient {
         }).await?;
 
         Ok(response.events.into_iter().next())
+    }
+
+    /// Verify a push subscription signature
+    pub fn verify_push_subscription(
+        &self,
+        signature: &str,
+        body: &str,
+        secret: &str,
+        options: Option<crate::push_subscriptions::VerificationOptions>,
+    ) -> Result<bool, crate::push_subscriptions::PushSubscriptionVerificationError> {
+        let verifier = crate::push_subscriptions::PushSubscriptionVerifier::new(secret.to_string())?;
+        verifier.verify_signature(signature, body, options)
+    }
+
+    /// Create a push subscription verifier instance
+    pub fn create_push_subscription_verifier(
+        &self,
+        secret: &str,
+    ) -> Result<crate::push_subscriptions::PushSubscriptionVerifier, crate::push_subscriptions::PushSubscriptionVerificationError> {
+        crate::push_subscriptions::PushSubscriptionVerifier::new(secret.to_string())
     }
 
     /// Internal method to publish events, used by the wait implementation
