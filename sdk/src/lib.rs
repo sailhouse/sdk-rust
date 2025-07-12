@@ -4,7 +4,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 
 pub mod admin;
-pub use admin::AdminClient;
+pub use admin::{AdminClient, Filter, FilterCondition, FilterOption, ComplexFilter, PushSubscriptionOptions};
 
 #[derive(Debug, Clone)]
 pub struct SailhouseClient {
