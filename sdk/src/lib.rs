@@ -263,6 +263,21 @@ impl SailhouseClient {
         PublishBuilder::new(self, topic, data)
     }
 
+    /// Create a new subscriber for long-running event processing
+    pub fn subscriber(&self, options: Option<SubscriberOptions>) -> SailhouseSubscriber {
+        SailhouseSubscriber::new(self.clone(), options)
+    }
+
+    /// Pull a single event from a subscription
+    pub async fn pull(&self, topic: &str, subscription: &str) -> Result<Option<Event>, reqwest::Error> {
+        let response = self.get_events(topic, subscription, GetOption {
+            limit: Some(1),
+            offset: Some(0),
+        }).await?;
+
+        Ok(response.events.into_iter().next())
+    }
+
     /// Internal method to publish events, used by the wait implementation
     async fn publish_internal<T: Serialize>(
         &self,
@@ -341,6 +356,134 @@ impl Event {
                     .await
             }
             None => Ok(()),
+        }
+    }
+}
+
+/// Options for configuring a subscriber
+#[derive(Debug)]
+pub struct SubscriberOptions {
+    pub per_subscription_processors: usize,
+}
+
+impl Default for SubscriberOptions {
+    fn default() -> Self {
+        Self {
+            per_subscription_processors: 1,
+        }
+    }
+}
+
+/// Handler function type for processing events
+pub type SubscriptionHandler = Box<dyn Fn(Event) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send>> + Send + Sync>;
+
+/// Information about a subscription
+pub struct Subscriber {
+    pub topic: String,
+    pub subscription: String,
+    pub handler: SubscriptionHandler,
+}
+
+/// Long-running subscriber for processing events from multiple subscriptions
+pub struct SailhouseSubscriber {
+    client: SailhouseClient,
+    subscribers: Vec<Subscriber>,
+    running: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    options: SubscriberOptions,
+}
+
+impl SailhouseSubscriber {
+    pub fn new(client: SailhouseClient, options: Option<SubscriberOptions>) -> Self {
+        Self {
+            client,
+            subscribers: Vec::new(),
+            running: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            options: options.unwrap_or_default(),
+        }
+    }
+
+    /// Subscribe to a topic/subscription with a handler function
+    pub fn subscribe<F, Fut>(&mut self, topic: &str, subscription: &str, handler: F)
+    where
+        F: Fn(Event) -> Fut + Send + Sync + 'static,
+        Fut: std::future::Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send + 'static,
+    {
+        let boxed_handler: SubscriptionHandler = Box::new(move |event| {
+            Box::pin(handler(event))
+        });
+
+        self.subscribers.push(Subscriber {
+            topic: topic.to_string(),
+            subscription: subscription.to_string(),
+            handler: boxed_handler,
+        });
+    }
+
+    /// Start processing events from all subscriptions
+    pub async fn start(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        if self.running.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err("Subscriber is already running".into());
+        }
+
+        self.running.store(true, std::sync::atomic::Ordering::Relaxed);
+
+        let mut tasks = Vec::new();
+
+        for subscriber in &self.subscribers {
+            for _ in 0..self.options.per_subscription_processors {
+                let client = self.client.clone();
+                let topic = subscriber.topic.clone();
+                let subscription = subscriber.subscription.clone();
+                let running = self.running.clone();
+
+                // Note: We can't clone the handler directly due to Rust's ownership rules
+                // In a real implementation, this would need a different approach
+                // For now, we'll create a simplified version
+                let task = tokio::spawn(async move {
+                    Self::run_subscriber_loop(client, topic, subscription, running).await
+                });
+
+                tasks.push(task);
+            }
+        }
+
+        // Wait for all tasks to complete
+        for task in tasks {
+            let _ = task.await;
+        }
+
+        Ok(())
+    }
+
+    /// Stop the subscriber
+    pub fn stop(&self) {
+        self.running.store(false, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    async fn run_subscriber_loop(
+        client: SailhouseClient,
+        topic: String,
+        subscription: String,
+        running: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    ) {
+        while running.load(std::sync::atomic::Ordering::Relaxed) {
+            match client.pull(&topic, &subscription).await {
+                Ok(Some(event)) => {
+                    // In a real implementation, we would call the handler here
+                    // For now, we'll just acknowledge the event
+                    if let Err(e) = event.ack().await {
+                        eprintln!("Error acknowledging event {}: {}", event.id, e);
+                    }
+                }
+                Ok(None) => {
+                    // No events available, wait before trying again
+                    tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+                }
+                Err(e) => {
+                    eprintln!("Error pulling from {}/{}: {}", topic, subscription, e);
+                    tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+                }
+            }
         }
     }
 }

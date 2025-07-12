@@ -22,6 +22,10 @@ version = "1.0.107"
 version = "0.4"
 features = ["serde"]
 
+[dependencies.tokio]
+version = "1.0"
+features = ["time"]
+
 [dev-dependencies]
 mockito = "1.2"
 tokio = { version = "1.0", features = ["full", "macros", "rt-multi-thread"] }
